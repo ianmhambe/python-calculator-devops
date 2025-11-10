@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 env:
-  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/calculator-app
+  DOCKER_IMAGE: mhambe/calculator-app
   
 jobs:
   test:
@@ -66,7 +66,7 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache
-        cache-to: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/calculator-app:buildcache,mode=max
+        cache-to: type=registry,ref=${{ env.DOCKER_IMAGE }}:buildcache,mode=max
 
   deploy:
     needs: build-and-push
@@ -87,6 +87,9 @@ jobs:
         
     - name: Deploy to Kubernetes
       run: |
+        # Update the deployment with your actual Docker Hub username
+        sed -i 's|YOUR_DOCKERHUB_USERNAME|mhambe|g' k8s/deployment.yaml
+        
         # Apply your Kubernetes manifests
         kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml

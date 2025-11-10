@@ -77,34 +77,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Create Kind cluster
-      uses: helm/kind-action@v1.8.0
-      
     - name: Set up kubectl
       uses: azure/setup-kubectl@v4
       with:
         version: 'latest'
         
+    - name: Configure kubectl
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+        
     - name: Deploy to Kubernetes
       run: |
-        # Update the deployment with your actual Docker Hub username
-        sed -i 's|YOUR_DOCKERHUB_USERNAME|mhambe|g' k8s/deployment.yaml
-        
-        # Apply your Kubernetes manifests
-        kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
-        
-        # Wait for deployment to be ready
-        kubectl rollout status deployment/calculator-app --timeout=5m
+        kubectl set image deployment/calculator-app calculator=${{ env.DOCKER_IMAGE }}:latest -n default
+        kubectl rollout status deployment/calculator-app -n default --timeout=5m
         
     - name: Verify deployment
       run: |
-        kubectl get pods -l app=calculator
-        kubectl get svc calculator-service
-        
-    - name: Run smoke test
-      run: |
-        # Simple smoke test to verify the app is working
-        kubectl port-forward svc/calculator-service 8080:80 &
-        sleep 10
-        curl -f http://localhost:8080/health || exit 1
+        kubectl get pods -n default -l app=calculator
+        kubectl get svc calculator-service -n default

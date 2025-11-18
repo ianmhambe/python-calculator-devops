@@ -77,25 +77,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Create Kind cluster
+      uses: helm/kind-action@v1.8.0
+      
     - name: Set up kubectl
       uses: azure/setup-kubectl@v4
       with:
         version: 'latest'
-        
-    - name: Configure kubectl for local cluster
-      run: |
-        # Create kubeconfig directory
-        mkdir -p $HOME/.kube
-        
-        # Decode and save your local kubeconfig
-        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
-        
-        # Set secure permissions
-        chmod 600 $HOME/.kube/config
-        
-        # Verify cluster connection
-        kubectl cluster-info
-        kubectl get nodes
         
     - name: Deploy to Kubernetes
       run: |
@@ -113,10 +101,10 @@ jobs:
       run: |
         kubectl get pods -l app=calculator
         kubectl get svc calculator-service
-        kubectl get endpoints calculator-service
         
     - name: Run smoke test
       run: |
         # Simple smoke test to verify the app is working
-        timeout 30s bash -c 'until kubectl wait --for=condition=ready pod -l app=calculator --timeout=30s; do sleep 1; done'
-        kubectl run smoke-test --image=curlimages/curl --rm -it --restart=Never -- curl -f http://calculator-service.default.svc.cluster.local/health
+        kubectl port-forward svc/calculator-service 8080:80 &
+        sleep 10
+        curl -f http://localhost:8080/health || exit 1
